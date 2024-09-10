@@ -25,6 +25,8 @@ defmodule DesafioCliTest do
 
   test "Parse number" do
     assert ParseArgs.next_token("123") == {:ok, "123", "", :number}
+    assert ParseArgs.next_token("123 123") == {:ok, "123", "123", :number}
+    assert ParseArgs.next_token("\"123\" 123") == {:ok, "\"123\"", "123", :string}
     assert ParseArgs.next_token("123456") == {:ok, "123456", "", :number}
     assert ParseArgs.next_token("123abc") == {:ok, "123abc", "", :string}
     assert ParseArgs.next_token("1a2b3c") == {:ok, "1a2b3c", "", :string}

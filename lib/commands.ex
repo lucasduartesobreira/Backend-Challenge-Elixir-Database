@@ -95,7 +95,7 @@ defmodule ParseArgs do
     2 => %{:whitespace => 4, :* => 2, :number => 2},
     3 => %{"\"" => 1, :* => :err},
     4 => %{},
-    5 => %{:* => 2, :number => 5, " " => 4}
+    5 => %{:* => 2, :number => 5, :whitespace => 4}
   }
 
   @change_type_transitions %{
