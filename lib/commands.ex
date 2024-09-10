@@ -137,17 +137,9 @@ defmodule ParseArgs do
             next_token(tail, token <> head, result_state, new_type)
         end
 
-      {true, true} ->
+      {_, _} ->
         {:ok, String.trim(token), String.trim(str),
-         if is_boolean_type(String.trim(token)) do
-           :boolean
-         else
-           type
-         end}
-
-      {_, false} ->
-        {:ok, String.trim(token), "",
-         if is_boolean_type(String.trim(token)) do
+         if is_boolean_type(token) do
            :boolean
          else
            type
