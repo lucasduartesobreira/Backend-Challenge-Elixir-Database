@@ -13,6 +13,7 @@ defmodule DesafioCliTest do
     assert Commands.parse("SET key value") == {:ok, "SET", "key", "value"}
     assert Commands.parse("Set \"key\" value") == {:ok, "SET", "\"key\"", "value"}
     assert Commands.parse("SET \"key\" value") == {:ok, "SET", "\"key\"", "value"}
+    assert Commands.parse("SET \"1a2b3c\" value") == {:ok, "SET", "\"1a2b3c\"", "value"}
   end
 
   test "Parse string" do

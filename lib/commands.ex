@@ -91,7 +91,7 @@ end
 defmodule ParseArgs do
   @transitions %{
     0 => %{"\"" => 1, :* => 2, :number => 5},
-    1 => %{:whitespace => 1, "\\" => 3, "\"" => 4, :* => 1},
+    1 => %{:whitespace => 1, "\\" => 3, "\"" => 4, :* => 1, :number => 1},
     2 => %{:whitespace => 4, :* => 2, :number => 2},
     3 => %{"\"" => 1, :* => :err},
     4 => %{},
