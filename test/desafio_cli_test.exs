@@ -11,8 +11,9 @@ defmodule DesafioCliTest do
   test "Parse SET" do
     assert Commands.parse("Set key value") == {:ok, "SET", "key", "value"}
     assert Commands.parse("SET key value") == {:ok, "SET", "key", "value"}
-    assert Commands.parse("Set \"key\" value") == {:ok, "SET", "key", "value"}
-    assert Commands.parse("SET \"key\" value") == {:ok, "SET", "key", "value"}
+    assert Commands.parse("Set \"key\" value") == {:ok, "SET", "\"key\"", "value"}
+    assert Commands.parse("SET \"key\" value") == {:ok, "SET", "\"key\"", "value"}
+  end
 
   test "Parse string" do
     assert ParseArgs.next_token("\"teste\" \"algo depois\"") ==

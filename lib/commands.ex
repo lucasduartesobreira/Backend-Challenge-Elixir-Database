@@ -10,7 +10,7 @@ defmodule Commands do
 
     case uppercase_command do
       "SET" ->
-        parsed = parse_set_key(args)
+        parsed = parse_set_args(args)
 
         case parsed do
           {:ok, key, value} -> {:ok, "SET", key, value}
@@ -34,20 +34,60 @@ defmodule Commands do
     end
   end
 
-  def parse_set_key([args]) do
-    args = String.trim(args)
+  defp parse_set_args([]) do
+    {:err, "invalid syntax, should use SET <key> <value>"}
+  end
 
-    case args do
-      "\"" <> rest ->
-        [first, rest] = String.split(rest, "\"", parts: 2)
-        parse_set_key([first <> rest])
+  defp parse_set_args([args]) do
+    args = String.trim_leading(args)
+    key = parse_set_key(args)
+
+    case key do
+      {:ok, key_token, tail} ->
+        value = parse_set_value(tail)
+
+        case value do
+          {:ok, value_token} -> {:ok, key_token, value_token}
+          err -> err
+        end
+
+      err ->
+        err
+    end
+  end
+
+  def parse_set_key(args) do
+    key = ParseArgs.next_token(args)
+
+    case key do
+      {:ok, key_token, tail, :string} ->
+        {:ok, key_token, tail}
+
+      {:ok, token, _, type} ->
+        {:err,
+         "only strings are accepted as key, found a key of type #{type}, you could try \"#{token}\""}
 
       _ ->
-        splited = String.split(args, " ", parts: 2)
+        {:err, "couldn't parse a key"}
+    end
+  end
 
-        case splited do
-          [key, value] -> {:ok, key, value}
-          _ -> {:err, "Error parsing SET args"}
+  def parse_set_value(args) do
+    value = ParseArgs.next_token(args)
+
+    case value do
+      {:ok, value_token, "", _} ->
+        {:ok, value_token}
+
+      {:ok, _, tail, _} ->
+        {:err, "couldn't process #{tail}"}
+
+      _ ->
+        {:err, "couldn't parse a value"}
+    end
+  end
+end
+
 defmodule ParseArgs do
   @transitions %{
     0 => %{"\"" => 1, :* => 2, :number => 5},
