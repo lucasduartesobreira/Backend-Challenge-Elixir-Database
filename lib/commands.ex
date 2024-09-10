@@ -91,11 +91,11 @@ end
 defmodule ParseArgs do
   @transitions %{
     0 => %{"\"" => 1, :* => 2, :number => 5},
-    1 => %{:whitespace => 1, "\\" => 3, "\"" => 4, :* => 1, :number => 1},
-    2 => %{:whitespace => 4, :* => 2, :number => 2},
+    1 => %{:whitespace => 1, "\\" => 3, "\"" => :end, :* => 1, :number => 1},
+    2 => %{:whitespace => :end, :* => 2, :number => 2},
     3 => %{"\"" => 1, :* => :err},
-    4 => %{},
-    5 => %{:* => 2, :number => 5, :whitespace => 4}
+    :end => %{},
+    5 => %{:* => 2, :number => 5, :whitespace => :end}
   }
 
   @change_type_transitions %{
@@ -103,17 +103,8 @@ defmodule ParseArgs do
     1 => %{},
     2 => %{},
     3 => %{},
-    4 => %{},
+    :end => %{},
     5 => %{2 => :string}
-  }
-
-  @terminal? %{
-    0 => false,
-    1 => false,
-    2 => false,
-    3 => false,
-    4 => true,
-    5 => false
   }
 
   def next_token(str, token \\ "", state \\ 0, type \\ :undefined) do
@@ -122,7 +113,7 @@ defmodule ParseArgs do
     type_transitions_for_state = @change_type_transitions[state]
     # IO.puts("head: #{head}, state: #{state}, token: #{token}, type: #{type}")
 
-    case {@terminal?[state], String.length(head) > 0} do
+    case {state == :end, String.length(head) > 0} do
       {false, true} ->
         char_type =
           cond do
