@@ -148,7 +148,7 @@ defmodule ParseArgs do
 
       {true, true} ->
         {:ok, String.trim(token), String.trim(str),
-         if is_boolean_type(token) do
+         if is_boolean_type(String.trim(token)) do
            :boolean
          else
            type
@@ -156,7 +156,7 @@ defmodule ParseArgs do
 
       {_, false} ->
         {:ok, String.trim(token), "",
-         if is_boolean_type(token) do
+         if is_boolean_type(String.trim(token)) do
            :boolean
          else
            type
@@ -165,6 +165,7 @@ defmodule ParseArgs do
   end
 
   def is_boolean_type(token) do
+    token = String.trim(token)
     token == "TRUE" || token == "FALSE"
   end
 end

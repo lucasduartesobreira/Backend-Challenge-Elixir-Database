@@ -14,6 +14,10 @@ defmodule DesafioCliTest do
     assert Commands.parse("Set \"key\" value") == {:ok, "SET", "\"key\"", "value"}
     assert Commands.parse("SET \"key\" value") == {:ok, "SET", "\"key\"", "value"}
     assert Commands.parse("SET \"1a2b3c\" value") == {:ok, "SET", "\"1a2b3c\"", "value"}
+
+    assert Commands.parse("SET TRUE value") ==
+             {:err,
+              "only strings are accepted as key, found a key of type boolean, you could try \"TRUE\""}
   end
 
   test "Parse string" do
@@ -33,7 +37,10 @@ defmodule DesafioCliTest do
     assert ParseArgs.next_token("1a2b3c") == {:ok, "1a2b3c", "", :string}
   end
 
+  @tag :focus
   test "Parse boolean" do
+    assert ParseArgs.next_token("TRUE algodepois") == {:ok, "TRUE", "algodepois", :boolean}
+    assert ParseArgs.next_token("FALSE algodepois") == {:ok, "FALSE", "algodepois", :boolean}
     assert ParseArgs.next_token("TRUE") == {:ok, "TRUE", "", :boolean}
     assert ParseArgs.next_token("FALSE") == {:ok, "FALSE", "", :boolean}
     assert ParseArgs.next_token("\"TRUE\"") == {:ok, "\"TRUE\"", "", :string}
