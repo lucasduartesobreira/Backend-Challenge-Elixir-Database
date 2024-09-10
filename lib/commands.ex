@@ -8,8 +8,8 @@ defmodule Commands do
     [command | args] = String.split(line, " ", parts: 2)
     uppercase_command = String.upcase(command)
 
-    case uppercase_command do
-      "SET" ->
+    case {uppercase_command, args} do
+      {"SET", _} ->
         parsed = parse_set_args(args)
 
         case parsed do
@@ -17,19 +17,24 @@ defmodule Commands do
           {:err, err} -> {:err, err}
         end
 
-      "GET" ->
-        {:ok, "GET"}
+      {"GET", [args]} ->
+        parsed = parse_key(args)
 
-      "BEGIN" ->
+        case parsed do
+          {:ok, key, _} -> {:ok, "GET", key}
+          err -> err
+        end
+
+      {"BEGIN", _} ->
         {:ok, "BEGIN"}
 
-      "ROLLBACK" ->
+      {"ROLLBACK", _} ->
         {:ok, "ROLLBACK"}
 
-      "COMMIT" ->
+      {"COMMIT", _} ->
         {:ok, "COMMIT"}
 
-      command ->
+      {command, _} ->
         {:err, "No command #{command}"}
     end
   end
@@ -40,11 +45,11 @@ defmodule Commands do
 
   defp parse_set_args([args]) do
     args = String.trim_leading(args)
-    key = parse_set_key(args)
+    key = parse_key(args)
 
     case key do
       {:ok, key_token, tail} ->
-        value = parse_set_value(tail)
+        value = parse_value(tail)
 
         case value do
           {:ok, value_token} -> {:ok, key_token, value_token}
@@ -56,7 +61,7 @@ defmodule Commands do
     end
   end
 
-  def parse_set_key(args) do
+  def parse_key(args) do
     key = ParseArgs.next_token(args)
 
     case key do
@@ -72,7 +77,7 @@ defmodule Commands do
     end
   end
 
-  def parse_set_value(args) do
+  def parse_value(args) do
     value = ParseArgs.next_token(args)
 
     case value do
