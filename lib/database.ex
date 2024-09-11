@@ -13,6 +13,10 @@ defmodule Database do
     defstruct [:result, :message, :database]
   end
 
+  defmodule RollbackError do
+    defexception message: "Can't rollback on level 0"
+  end
+
   def handle_command(
         %Command{} = command,
         %Database{} = database
@@ -28,7 +32,7 @@ defmodule Database do
         handle_begin(database)
 
       %Command{command: "ROLLBACK", key: nil, value: nil} ->
-        "ROLLBACK"
+        handle_rollback(database)
 
       %Command{command: "COMMIT", key: nil, value: nil} ->
         "COMMIT"
@@ -71,6 +75,32 @@ defmodule Database do
     updated_database = %Database{database | transactions: updated_transactions}
 
     %DatabaseCommandResponse{result: :ok, message: "#{new_level}", database: updated_database}
+  end
+
+  def handle_rollback(%Database{transactions: transactions} = database) do
+    {poped_transaction, updated_transactions} = List.pop_at(transactions, -1)
+
+    case poped_transaction do
+      nil ->
+        exit("what the fuck just happend, where are the transactions???")
+
+      %Transaction{level: 0} ->
+        %DatabaseCommandResponse{
+          result: :err,
+          message: "You can't rollback a transaction without even starting one",
+          database: database
+        }
+
+      %Transaction{} ->
+        %DatabaseCommandResponse{
+          result: :ok,
+          message: "#{poped_transaction.level - 1}",
+          database: %Database{database | transactions: updated_transactions}
+        }
+
+      _ ->
+        exit("should never get to this point")
+    end
   end
 
   def new() do
