@@ -24,13 +24,13 @@ defmodule Database do
       %Command{command: "GET", key: key} when key != nil ->
         handle_get(key, database)
 
-      %Command{command: "BEGIN"} ->
-        "BEGIN"
+      %Command{command: "BEGIN", key: nil, value: nil} ->
+        handle_begin(database)
 
-      %Command{command: "ROLLBACK"} ->
+      %Command{command: "ROLLBACK", key: nil, value: nil} ->
         "ROLLBACK"
 
-      %Command{command: "COMMIT"} ->
+      %Command{command: "COMMIT", key: nil, value: nil} ->
         "COMMIT"
 
       _ ->
@@ -63,6 +63,14 @@ defmodule Database do
       end
 
     %DatabaseCommandResponse{result: :ok, message: message, database: database}
+  end
+
+  def handle_begin(%Database{transactions: transactions} = database) do
+    new_level = length(transactions)
+    updated_transactions = List.insert_at(transactions, -1, %Transaction{level: new_level})
+    updated_database = %Database{database | transactions: updated_transactions}
+
+    %DatabaseCommandResponse{result: :ok, message: "#{new_level}", database: updated_database}
   end
 
   def new() do

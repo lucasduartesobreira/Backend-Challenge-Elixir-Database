@@ -63,6 +63,38 @@ defmodule DatabaseTest do
              %DatabaseCommandResponse{result: :ok, message: "value", database: database}
   end
 
+  test "Begin command" do
+    database = Database.new()
+
+    %DatabaseCommandResponse{database: database} =
+      Database.handle_command(%Command{command: "SET", key: "some", value: "value"}, database)
+
+    assert database == %Database{transactions: [%Transaction{log: %{"some" => "value"}}]}
+
+    result_first_begin = Database.handle_command(%Command{command: "BEGIN"}, database)
+
+    assert result_first_begin ==
+             %DatabaseCommandResponse{
+               result: :ok,
+               message: "1",
+               database: %Database{
+                 transactions: database.transactions ++ [%Transaction{level: 1, log: %{}}]
+               }
+             }
+
+    result_second_begin =
+      Database.handle_command(%Command{command: "BEGIN"}, result_first_begin.database)
+
+    assert result_second_begin == %DatabaseCommandResponse{
+             result: :ok,
+             message: "2",
+             database: %Database{
+               transactions:
+                 result_first_begin.database.transactions ++ [%Transaction{level: 2, log: %{}}]
+             }
+           }
+  end
+
   test "Start database" do
     database = Database.new()
 
