@@ -1,3 +1,8 @@
+defmodule Command do
+  @enforce_keys [:command]
+  defstruct [:command, :key, :value]
+end
+
 defmodule Commands do
   def parse("") do
     nil
