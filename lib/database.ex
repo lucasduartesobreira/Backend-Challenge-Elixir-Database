@@ -38,7 +38,16 @@ defmodule Database do
         handle_commit(database)
 
       _ ->
-        {:err, database}
+        %DatabaseCommandResponse{
+          result: :err,
+          database: database,
+          message: "Can't understand this command. Commands available are: 
+          - SET <key> <value>
+          - GET <key>
+          - BEGIN
+          - ROLLBACK
+          - COMMIT"
+        }
     end
   end
 
