@@ -42,7 +42,7 @@ defmodule Database do
     end
   end
 
-  def handle_set(key, value, %Database{transactions: transactions} = database) do
+  def handle_set(key, value, %Database{transactions: transactions}) do
     {%Transaction{level: level, log: log}, remaining_transactions} =
       List.pop_at(transactions, -1, %Transaction{})
 
