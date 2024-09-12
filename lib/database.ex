@@ -35,7 +35,7 @@ defmodule Database do
         handle_rollback(database)
 
       %Command{command: "COMMIT", key: nil, value: nil} ->
-        "COMMIT"
+        handle_commit(database)
 
       _ ->
         {:err, database}
@@ -100,6 +100,31 @@ defmodule Database do
 
       _ ->
         exit("should never get to this point")
+    end
+  end
+
+  def handle_commit(%Database{transactions: transactions} = database) do
+    {transaction, l} = List.pop_at(transactions, -1)
+    commit_to = List.last(l, transaction)
+
+    case {transaction, commit_to} do
+      {nil, _} ->
+        exit("Wtf again")
+
+      {%Transaction{level: 0}, %Transaction{level: 0}} ->
+        %DatabaseCommandResponse{result: :ok, message: "0", database: database}
+
+      {%Transaction{log: log1}, %Transaction{level: level, log: log0}} ->
+        new_commit_to_transaction_log = Map.merge(log0, log1)
+
+        updated_transactions =
+          List.replace_at(l, -1, %Transaction{level: level, log: new_commit_to_transaction_log})
+
+        %DatabaseCommandResponse{
+          result: :ok,
+          message: "#{level}",
+          database: %Database{database | transactions: updated_transactions}
+        }
     end
   end
 

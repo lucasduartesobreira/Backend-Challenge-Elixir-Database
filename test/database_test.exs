@@ -175,6 +175,71 @@ defmodule DatabaseTest do
            }
   end
 
+  test "Commit command" do
+    database = Database.new()
+
+    %DatabaseCommandResponse{database: database} =
+      Database.handle_command(%Command{command: "SET", key: "some", value: "value"}, database)
+
+    assert database == %Database{transactions: [%Transaction{log: %{"some" => "value"}}]}
+
+    result_first_commit = Database.handle_command(%Command{command: "COMMIT"}, database)
+
+    assert result_first_commit == %DatabaseCommandResponse{
+             result: :ok,
+             message: "0",
+             database: database
+           }
+
+    %DatabaseCommandResponse{database: result_first_begin} =
+      Database.handle_command(%Command{command: "BEGIN"}, database)
+
+    %DatabaseCommandResponse{database: result_second_set} =
+      Database.handle_command(
+        %Command{command: "SET", key: "another", value: "value"},
+        result_first_begin
+      )
+
+    %DatabaseCommandResponse{database: result_second_begin} =
+      Database.handle_command(%Command{command: "BEGIN"}, result_second_set)
+
+    %DatabaseCommandResponse{database: result_third_set} =
+      Database.handle_command(
+        %Command{command: "SET", key: "third", value: "third"},
+        result_second_begin
+      )
+
+    result_second_commit =
+      Database.handle_command(%Command{command: "COMMIT"}, result_third_set)
+
+    assert result_second_commit == %DatabaseCommandResponse{
+             result: :ok,
+             message: "1",
+             database: %Database{
+               transactions: [
+                 %Transaction{log: %{"some" => "value"}},
+                 %Transaction{level: 1, log: %{"another" => "value", "third" => "third"}}
+               ]
+             }
+           }
+
+    result_third_commit =
+      Database.handle_command(%Command{command: "COMMIT"}, result_second_commit.database)
+
+    assert result_third_commit == %DatabaseCommandResponse{
+             result: :ok,
+             message: "0",
+             database: %Database{
+               database
+               | transactions: [
+                   %Transaction{
+                     log: %{"some" => "value", "another" => "value", "third" => "third"}
+                   }
+                 ]
+             }
+           }
+  end
+
   test "Start database" do
     database = Database.new()
 
