@@ -2,27 +2,30 @@ defmodule DesafioCli do
   @moduledoc """
   Ponto de entrada para a CLI.
   """
+  alias Database.DatabaseCommandResponse
 
   @doc """
   A função main recebe os argumentos passados na linha de
   comando como lista de strings e executa a CLI.
   """
   def main(_args) do
+    database = Database.new()
+    main_loop(database)
+  end
+
+  def main_loop(%Database{} = database) do
     input = IO.gets("> ")
-    command = Commands.parse(input)
 
-    case command do
-      {:ok, %Command{command: "SET", key: key, value: value}} ->
-        IO.puts("SET key: #{key} value: #{value}")
+    %DatabaseCommandResponse{database: database, message: message, result: result} =
+      Database.handle_command(input, database)
 
-      {:ok, %Command{command: "GET", key: key}} ->
-        IO.puts("GET key: #{key}")
+    IO.puts(
+      case result do
+        :ok -> message
+        :err -> "Error: " <> message
+      end
+    )
 
-      {:ok, command} ->
-        IO.puts("#{command}")
-
-      {:err, err} ->
-        IO.puts(err)
-    end
+    main_loop(database)
   end
 end
