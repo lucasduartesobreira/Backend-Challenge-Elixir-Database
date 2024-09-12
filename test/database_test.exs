@@ -82,6 +82,37 @@ defmodule DatabaseTest do
 
     assert Database.handle_command(%Command{command: "GET", key: "some"}, database) ==
              %DatabaseCommandResponse{result: :ok, message: "value", database: database}
+
+    database_with_multi_transactions = %Database{
+      transactions: [
+        %Transaction{log: %{"some" => "value", "another" => "another_value"}},
+        %Transaction{level: 1, log: %{"another" => "another"}}
+      ]
+    }
+
+    get_on_multi_transactions =
+      Database.handle_command(
+        %Command{command: "GET", key: "some"},
+        database_with_multi_transactions
+      )
+
+    assert get_on_multi_transactions == %DatabaseCommandResponse{
+             result: :ok,
+             database: database_with_multi_transactions,
+             message: "value"
+           }
+
+    get_on_multi_transactions =
+      Database.handle_command(
+        %Command{command: "GET", key: "another"},
+        database_with_multi_transactions
+      )
+
+    assert get_on_multi_transactions == %DatabaseCommandResponse{
+             result: :ok,
+             database: database_with_multi_transactions,
+             message: "another"
+           }
   end
 
   test "Begin command" do

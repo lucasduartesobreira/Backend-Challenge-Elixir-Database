@@ -58,15 +58,20 @@ defmodule Database do
   end
 
   def handle_get(key, %Database{transactions: transactions} = database) do
-    %Transaction{log: log} = List.last(transactions, %Transaction{})
+    reverse_transactions = Enum.reverse(transactions)
 
     message =
-      case log[key] do
-        nil -> "NIL"
-        result -> result
-      end
+      find_key(key, reverse_transactions)
 
     %DatabaseCommandResponse{result: :ok, message: message, database: database}
+  end
+
+  defp find_key(key, [%Transaction{log: log, level: level} | tail]) do
+    case {log[key], level} do
+      {nil, level} when level > 0 -> find_key(key, tail)
+      {nil, 0} -> "NIL"
+      {result, _} -> result
+    end
   end
 
   def handle_begin(%Database{transactions: transactions} = database) do
