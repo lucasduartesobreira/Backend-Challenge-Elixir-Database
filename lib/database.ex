@@ -43,12 +43,12 @@ defmodule Database do
   end
 
   def handle_set(key, value, %Database{transactions: transactions}) do
-    {%Transaction{level: level, log: log}, remaining_transactions} =
+    {%Transaction{log: log} = trasaction, remaining_transactions} =
       List.pop_at(transactions, -1, %Transaction{})
 
     message = if(Map.has_key?(log, key), do: "TRUE", else: "FALSE") <> " #{value}"
 
-    updated_transaction = %Transaction{level: level, log: Map.put(log, key, value)}
+    updated_transaction = %Transaction{trasaction | log: Map.put(log, key, value)}
 
     updated_database = %Database{
       transactions: remaining_transactions ++ [updated_transaction]
