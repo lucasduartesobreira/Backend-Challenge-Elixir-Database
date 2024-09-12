@@ -51,7 +51,6 @@ defmodule Database do
     end
   end
 
-  def handle_set(key, value, %Database{transactions: transactions}) do
   def handle_command(command, %Database{} = database) do
     parsed_command = Commands.parse(command)
 
@@ -61,6 +60,7 @@ defmodule Database do
     end
   end
 
+  defp handle_set(key, value, %Database{transactions: transactions}) do
     {%Transaction{log: log} = trasaction, remaining_transactions} =
       List.pop_at(transactions, -1, %Transaction{})
 
@@ -75,7 +75,7 @@ defmodule Database do
     %DatabaseCommandResponse{result: :ok, message: message, database: updated_database}
   end
 
-  def handle_get(key, %Database{transactions: transactions} = database) do
+  defp handle_get(key, %Database{transactions: transactions} = database) do
     reverse_transactions = Enum.reverse(transactions)
 
     message =
@@ -92,7 +92,7 @@ defmodule Database do
     end
   end
 
-  def handle_begin(%Database{transactions: transactions} = database) do
+  defp handle_begin(%Database{transactions: transactions} = database) do
     new_level = length(transactions)
     updated_transactions = List.insert_at(transactions, -1, %Transaction{level: new_level})
     updated_database = %Database{database | transactions: updated_transactions}
@@ -100,7 +100,7 @@ defmodule Database do
     %DatabaseCommandResponse{result: :ok, message: "#{new_level}", database: updated_database}
   end
 
-  def handle_rollback(%Database{transactions: transactions} = database) do
+  defp handle_rollback(%Database{transactions: transactions} = database) do
     {poped_transaction, updated_transactions} = List.pop_at(transactions, -1)
 
     case poped_transaction do
@@ -126,7 +126,7 @@ defmodule Database do
     end
   end
 
-  def handle_commit(%Database{transactions: transactions} = database) do
+  defp handle_commit(%Database{transactions: transactions} = database) do
     {transaction, l} = List.pop_at(transactions, -1)
     commit_to = List.last(l, transaction)
 
