@@ -49,6 +49,27 @@ defmodule DatabaseTest do
     assert database_rewrite_some == %Database{
              transactions: [%Transaction{level: 0, log: %{"some" => "another_value"}}]
            }
+
+    database_with_multi_transactions = %Database{
+      transactions: [%Transaction{}, %Transaction{level: 1}]
+    }
+
+    set_on_multi_transaction =
+      Database.handle_command(
+        %Command{command: "SET", key: "some", value: "another_value"},
+        database_with_multi_transactions
+      )
+
+    assert set_on_multi_transaction == %DatabaseCommandResponse{
+             result: :ok,
+             message: "FALSE another_value",
+             database: %Database{
+               transactions: [
+                 %Transaction{},
+                 %Transaction{level: 1, log: %{"some" => "another_value"}}
+               ]
+             }
+           }
   end
 
   test "Get command" do
