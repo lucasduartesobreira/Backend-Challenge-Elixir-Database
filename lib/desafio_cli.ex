@@ -12,10 +12,17 @@ defmodule DesafioCli do
     command = Commands.parse(input)
 
     case command do
-      {:ok, "SET", key, value} -> IO.puts("SET key: #{key} value: #{value}")
-      {:ok, "GET", key} -> IO.puts("GET key: #{key}")
-      {:ok, command} -> IO.puts("#{command}")
-      {:err, err} -> IO.puts(err)
+      {:ok, %Command{command: "SET", key: key, value: value}} ->
+        IO.puts("SET key: #{key} value: #{value}")
+
+      {:ok, %Command{command: "GET", key: key}} ->
+        IO.puts("GET key: #{key}")
+
+      {:ok, command} ->
+        IO.puts("#{command}")
+
+      {:err, err} ->
+        IO.puts(err)
     end
   end
 end

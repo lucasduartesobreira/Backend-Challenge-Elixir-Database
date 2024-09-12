@@ -18,7 +18,7 @@ defmodule Commands do
         parsed = parse_set_args(args)
 
         case parsed do
-          {:ok, key, value} -> {:ok, "SET", key, value}
+          {:ok, key, value} -> {:ok, %Command{command: "SET", key: key, value: value}}
           {:err, err} -> {:err, err}
         end
 
@@ -26,18 +26,18 @@ defmodule Commands do
         parsed = parse_key(args)
 
         case parsed do
-          {:ok, key, _} -> {:ok, "GET", key}
+          {:ok, key, _} -> {:ok, %Command{command: "GET", key: key}}
           err -> err
         end
 
       {"BEGIN", _} ->
-        {:ok, "BEGIN"}
+        {:ok, %Command{command: "BEGIN"}}
 
       {"ROLLBACK", _} ->
-        {:ok, "ROLLBACK"}
+        {:ok, %Command{command: "ROLLBACK"}}
 
       {"COMMIT", _} ->
-        {:ok, "COMMIT"}
+        {:ok, %Command{command: "COMMIT"}}
 
       {command, _} ->
         {:err, "No command #{command}"}

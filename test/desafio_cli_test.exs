@@ -9,11 +9,20 @@ defmodule DesafioCliTest do
   end
 
   test "Parse SET" do
-    assert Commands.parse("Set key value") == {:ok, "SET", "key", "value"}
-    assert Commands.parse("SET key value") == {:ok, "SET", "key", "value"}
-    assert Commands.parse("Set \"key\" value") == {:ok, "SET", "\"key\"", "value"}
-    assert Commands.parse("SET \"key\" value") == {:ok, "SET", "\"key\"", "value"}
-    assert Commands.parse("SET \"1a2b3c\" value") == {:ok, "SET", "\"1a2b3c\"", "value"}
+    assert Commands.parse("Set key value") ==
+             {:ok, %Command{command: "SET", key: "key", value: "value"}}
+
+    assert Commands.parse("SET key value") ==
+             {:ok, %Command{command: "SET", key: "key", value: "value"}}
+
+    assert Commands.parse("Set \"key\" value") ==
+             {:ok, %Command{command: "SET", key: "\"key\"", value: "value"}}
+
+    assert Commands.parse("SET \"key\" value") ==
+             {:ok, %Command{command: "SET", key: "\"key\"", value: "value"}}
+
+    assert Commands.parse("SET \"1a2b3c\" value") ==
+             {:ok, %Command{command: "SET", key: "\"1a2b3c\"", value: "value"}}
 
     assert Commands.parse("SET TRUE value") ==
              {:err,
