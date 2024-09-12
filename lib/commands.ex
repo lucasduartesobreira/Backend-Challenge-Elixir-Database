@@ -53,13 +53,16 @@ defmodule Commands do
     key = parse_key(args)
 
     case key do
-      {:ok, key_token, tail} ->
+      {:ok, key_token, tail} when tail != "" and tail != nil ->
         value = parse_value(tail)
 
         case value do
           {:ok, value_token} -> {:ok, key_token, value_token}
           err -> err
         end
+
+      {:ok, _, _} ->
+        {:err, "invalid syntax, should use SET <key> <value>"}
 
       err ->
         err
