@@ -52,6 +52,15 @@ defmodule Database do
   end
 
   def handle_set(key, value, %Database{transactions: transactions}) do
+  def handle_command(command, %Database{} = database) do
+    parsed_command = Commands.parse(command)
+
+    case parsed_command do
+      {:ok, command} -> handle_command(command, database)
+      {:err, err} -> %DatabaseCommandResponse{result: :err, message: err, database: database}
+    end
+  end
+
     {%Transaction{log: log} = trasaction, remaining_transactions} =
       List.pop_at(transactions, -1, %Transaction{})
 
