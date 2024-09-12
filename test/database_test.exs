@@ -34,20 +34,28 @@ defmodule DatabaseTest do
     assert database == Database.new()
 
     assert database_with_some ==
-             %Database{transactions: [%Transaction{level: 0, log: %{"some" => "value"}}]}
+             %Database{
+               database_table: %{"some" => "value"},
+               transactions: [%Transaction{level: 0, log: %{"some" => nil}}]
+             }
 
     assert database_with_another ==
-             %Database{transactions: [%Transaction{level: 0, log: %{"another" => "another"}}]}
+             %Database{
+               database_table: %{"another" => "another"},
+               transactions: [%Transaction{level: 0, log: %{"another" => nil}}]
+             }
 
     assert database_with_some_and_another ==
              %Database{
+               database_table: %{"another" => "another", "some" => "value"},
                transactions: [
-                 %Transaction{level: 0, log: %{"another" => "another", "some" => "value"}}
+                 %Transaction{level: 0, log: %{"another" => nil, "some" => nil}}
                ]
              }
 
     assert database_rewrite_some == %Database{
-             transactions: [%Transaction{level: 0, log: %{"some" => "another_value"}}]
+             database_table: %{"some" => "another_value"},
+             transactions: [%Transaction{level: 0, log: %{"some" => "value"}}]
            }
 
     database_with_multi_transactions = %Database{
@@ -64,9 +72,10 @@ defmodule DatabaseTest do
              result: :ok,
              message: "FALSE another_value",
              database: %Database{
+               database_table: %{"some" => "another_value"},
                transactions: [
                  %Transaction{},
-                 %Transaction{level: 1, log: %{"some" => "another_value"}}
+                 %Transaction{level: 1, log: %{"some" => nil}}
                ]
              }
            }
@@ -78,15 +87,19 @@ defmodule DatabaseTest do
     %DatabaseCommandResponse{database: database} =
       Database.handle_command(%Command{command: "SET", key: "some", value: "value"}, database)
 
-    assert database == %Database{transactions: [%Transaction{log: %{"some" => "value"}}]}
+    assert database == %Database{
+             database_table: %{"some" => "value"},
+             transactions: [%Transaction{log: %{"some" => nil}}]
+           }
 
     assert Database.handle_command(%Command{command: "GET", key: "some"}, database) ==
              %DatabaseCommandResponse{result: :ok, message: "value", database: database}
 
     database_with_multi_transactions = %Database{
+      database_table: %{"some" => "value", "another" => "another"},
       transactions: [
-        %Transaction{log: %{"some" => "value", "another" => "another_value"}},
-        %Transaction{level: 1, log: %{"another" => "another"}}
+        %Transaction{log: %{"some" => nil, "another" => nil}},
+        %Transaction{level: 1, log: %{"another" => "another_value"}}
       ]
     }
 
@@ -121,7 +134,10 @@ defmodule DatabaseTest do
     %DatabaseCommandResponse{database: database} =
       Database.handle_command(%Command{command: "SET", key: "some", value: "value"}, database)
 
-    assert database == %Database{transactions: [%Transaction{log: %{"some" => "value"}}]}
+    assert database == %Database{
+             database_table: %{"some" => "value"},
+             transactions: [%Transaction{log: %{"some" => nil}}]
+           }
 
     result_first_begin = Database.handle_command(%Command{command: "BEGIN"}, database)
 
@@ -130,6 +146,7 @@ defmodule DatabaseTest do
                result: :ok,
                message: "1",
                database: %Database{
+                 database_table: %{"some" => "value"},
                  transactions: database.transactions ++ [%Transaction{level: 1, log: %{}}]
                }
              }
@@ -141,6 +158,7 @@ defmodule DatabaseTest do
              result: :ok,
              message: "2",
              database: %Database{
+               database_table: %{"some" => "value"},
                transactions:
                  result_first_begin.database.transactions ++ [%Transaction{level: 2, log: %{}}]
              }
@@ -153,7 +171,10 @@ defmodule DatabaseTest do
     %DatabaseCommandResponse{database: database} =
       Database.handle_command(%Command{command: "SET", key: "some", value: "value"}, database)
 
-    assert database == %Database{transactions: [%Transaction{log: %{"some" => "value"}}]}
+    assert database == %Database{
+             database_table: %{"some" => "value"},
+             transactions: [%Transaction{log: %{"some" => nil}}]
+           }
 
     result_first_begin = Database.handle_command(%Command{command: "BEGIN"}, database)
 
@@ -162,6 +183,7 @@ defmodule DatabaseTest do
                result: :ok,
                message: "1",
                database: %Database{
+                 database_table: %{"some" => "value"},
                  transactions: database.transactions ++ [%Transaction{level: 1, log: %{}}]
                }
              }
@@ -173,6 +195,7 @@ defmodule DatabaseTest do
              result: :ok,
              message: "2",
              database: %Database{
+               database_table: %{"some" => "value"},
                transactions:
                  result_first_begin.database.transactions ++ [%Transaction{level: 2, log: %{}}]
              }
@@ -212,7 +235,10 @@ defmodule DatabaseTest do
     %DatabaseCommandResponse{database: database} =
       Database.handle_command(%Command{command: "SET", key: "some", value: "value"}, database)
 
-    assert database == %Database{transactions: [%Transaction{log: %{"some" => "value"}}]}
+    assert database == %Database{
+             database_table: %{"some" => "value"},
+             transactions: [%Transaction{log: %{"some" => nil}}]
+           }
 
     result_first_commit = Database.handle_command(%Command{command: "COMMIT"}, database)
 
@@ -247,9 +273,10 @@ defmodule DatabaseTest do
              result: :ok,
              message: "1",
              database: %Database{
+               database_table: %{"some" => "value", "third" => "third", "another" => "value"},
                transactions: [
-                 %Transaction{log: %{"some" => "value"}},
-                 %Transaction{level: 1, log: %{"another" => "value", "third" => "third"}}
+                 %Transaction{log: %{"some" => nil}},
+                 %Transaction{level: 1, log: %{"another" => nil, "third" => nil}}
                ]
              }
            }
@@ -262,9 +289,10 @@ defmodule DatabaseTest do
              message: "0",
              database: %Database{
                database
-               | transactions: [
+               | database_table: %{"some" => "value", "third" => "third", "another" => "value"},
+                 transactions: [
                    %Transaction{
-                     log: %{"some" => "value", "another" => "value", "third" => "third"}
+                     log: %{"some" => nil, "another" => nil, "third" => nil}
                    }
                  ]
              }

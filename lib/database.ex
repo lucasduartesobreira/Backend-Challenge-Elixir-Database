@@ -6,7 +6,7 @@ end
 # end
 
 defmodule Database do
-  defstruct [:database_file, transactions: [%Transaction{}]]
+  defstruct [:database_file, database_table: %{}, transactions: [%Transaction{}]]
 
   defmodule DatabaseCommandResponse do
     @enforce_keys [:result, :message, :database]
@@ -60,36 +60,43 @@ defmodule Database do
     end
   end
 
-  defp handle_set(key, value, %Database{transactions: transactions}) do
+  defp handle_set(
+         key,
+         value,
+         %Database{database_table: db_table, transactions: transactions} = database
+       ) do
     {%Transaction{log: log} = trasaction, remaining_transactions} =
       List.pop_at(transactions, -1, %Transaction{})
 
-    message = if(Map.has_key?(log, key), do: "TRUE", else: "FALSE") <> " #{value}"
+    message = if(Map.has_key?(db_table, key), do: "TRUE", else: "FALSE") <> " #{value}"
 
-    updated_transaction = %Transaction{trasaction | log: Map.put(log, key, value)}
+    transaction_rollback_value = Map.get(db_table, key)
+
+    updated_transaction = %Transaction{
+      trasaction
+      | log: Map.put(log, key, transaction_rollback_value)
+    }
 
     updated_database = %Database{
-      transactions: remaining_transactions ++ [updated_transaction]
+      database
+      | database_table: Map.put(db_table, key, value),
+        transactions: remaining_transactions ++ [updated_transaction]
     }
 
     %DatabaseCommandResponse{result: :ok, message: message, database: updated_database}
   end
 
-  defp handle_get(key, %Database{transactions: transactions} = database) do
-    reverse_transactions = Enum.reverse(transactions)
-
+  defp handle_get(key, %Database{database_table: database_table} = database) do
     message =
-      find_key(key, reverse_transactions)
+      case Map.get(database_table, key) do
+        nil ->
+          "nil"
+
+        result ->
+          result
+      end
 
     %DatabaseCommandResponse{result: :ok, message: message, database: database}
-  end
-
-  defp find_key(key, [%Transaction{log: log, level: level} | tail]) do
-    case {log[key], level} do
-      {nil, level} when level > 0 -> find_key(key, tail)
-      {nil, 0} -> "NIL"
-      {result, _} -> result
-    end
   end
 
   defp handle_begin(%Database{transactions: transactions} = database) do
@@ -100,7 +107,9 @@ defmodule Database do
     %DatabaseCommandResponse{result: :ok, message: "#{new_level}", database: updated_database}
   end
 
-  defp handle_rollback(%Database{transactions: transactions} = database) do
+  defp handle_rollback(
+         %Database{database_table: database_table, transactions: transactions} = database
+       ) do
     {poped_transaction, updated_transactions} = List.pop_at(transactions, -1)
 
     case poped_transaction do
@@ -115,10 +124,16 @@ defmodule Database do
         }
 
       %Transaction{} ->
+        database_restored_table = Map.merge(database_table, poped_transaction.log)
+
         %DatabaseCommandResponse{
           result: :ok,
           message: "#{poped_transaction.level - 1}",
-          database: %Database{database | transactions: updated_transactions}
+          database: %Database{
+            database
+            | database_table: database_restored_table,
+              transactions: updated_transactions
+          }
         }
 
       _ ->
