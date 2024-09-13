@@ -127,38 +127,28 @@ defmodule DatabaseTest do
   test "Begin command" do
     database = Database.new()
 
-    %DatabaseCommandResponse{database: database} =
-      Database.handle_command(%Command{command: "SET", key: "some", value: "value"}, database)
-
-    assert database == %Database{
-             database_table: %{"some" => "value"},
-             transactions: [%Transaction{log: %{"some" => nil}}]
-           }
-
-    result_first_begin = Database.handle_command(%Command{command: "BEGIN"}, database)
-
-    assert result_first_begin ==
-             %DatabaseCommandResponse{
-               result: :ok,
-               message: "1",
-               database: %Database{
-                 database_table: %{"some" => "value"},
-                 transactions: database.transactions ++ [%Transaction{level: 1, log: %{}}]
-               }
-             }
-
-    result_second_begin =
-      Database.handle_command(%Command{command: "BEGIN"}, result_first_begin.database)
-
-    assert result_second_begin == %DatabaseCommandResponse{
-             result: :ok,
-             message: "2",
-             database: %Database{
-               database_table: %{"some" => "value"},
-               transactions:
-                 result_first_begin.database.transactions ++ [%Transaction{level: 2, log: %{}}]
-             }
-           }
+    database
+    |> do_command("SET some value")
+    |> do_command("BEGIn")
+    |> check_database(%Database{
+      database_table: %{"some" => "value"},
+      transactions: [%Transaction{log: %{"some" => nil}}, %Transaction{level: 1, log: %{}}]
+    })
+    |> check_result(:ok)
+    |> check_message("1")
+    |> do_command("SET another another")
+    |> do_command("SET some value2")
+    |> do_command("BEGIN")
+    |> check_database(%Database{
+      database_table: %{"some" => "value2", "another" => "another"},
+      transactions: [
+        %Transaction{log: %{"some" => nil}},
+        %Transaction{level: 1, log: %{"another" => nil, "some" => "value"}},
+        %Transaction{level: 2}
+      ]
+    })
+    |> check_result(:ok)
+    |> check_message("2")
   end
 
   test "Rollback command" do
