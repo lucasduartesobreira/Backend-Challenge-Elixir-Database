@@ -7,78 +7,89 @@ defmodule DatabaseTest do
     List.last(transactions)
   end
 
+  defp do_command(%Database{} = database, command) do
+    Database.handle_command(command, database)
+  end
+
+  defp do_command(%DatabaseCommandResponse{database: database}, command) do
+    do_command(database, command)
+  end
+
+  defp check_result(%DatabaseCommandResponse{result: result} = response, expected_result) do
+    assert result == expected_result
+    response
+  end
+
+  defp check_message(%DatabaseCommandResponse{message: message} = response, expected_message) do
+    assert message == expected_message
+    response
+  end
+
+  defp check_database(%DatabaseCommandResponse{database: database} = response, expected_database) do
+    assert database == expected_database
+    response
+  end
+
   test "Set command" do
     database = Database.new()
 
-    %DatabaseCommandResponse{database: database_with_some} =
-      Database.handle_command(%Command{command: "SET", key: "some", value: "value"}, database)
-
-    %DatabaseCommandResponse{database: database_with_another} =
-      Database.handle_command(
-        %Command{command: "SET", key: "another", value: "another"},
-        database
-      )
-
-    %DatabaseCommandResponse{database: database_with_some_and_another} =
-      Database.handle_command(
-        %Command{command: "SET", key: "another", value: "another"},
-        database_with_some
-      )
-
-    %DatabaseCommandResponse{database: database_rewrite_some} =
-      Database.handle_command(
-        %Command{command: "SET", key: "some", value: "another_value"},
-        database_with_some
-      )
-
-    assert database == Database.new()
-
-    assert database_with_some ==
-             %Database{
-               database_table: %{"some" => "value"},
-               transactions: [%Transaction{level: 0, log: %{"some" => nil}}]
-             }
-
-    assert database_with_another ==
-             %Database{
-               database_table: %{"another" => "another"},
-               transactions: [%Transaction{level: 0, log: %{"another" => nil}}]
-             }
-
-    assert database_with_some_and_another ==
-             %Database{
-               database_table: %{"another" => "another", "some" => "value"},
-               transactions: [
-                 %Transaction{level: 0, log: %{"another" => nil, "some" => nil}}
-               ]
-             }
-
-    assert database_rewrite_some == %Database{
-             database_table: %{"some" => "another_value"},
-             transactions: [%Transaction{level: 0, log: %{"some" => "value"}}]
-           }
+    do_command(database, "SET some value")
+    |> check_database(%Database{
+      database_table: %{"some" => "value"},
+      transactions: [%Transaction{log: %{"some" => nil}}]
+    })
+    |> check_message("FALSE value")
+    |> check_result(:ok)
+    |> do_command("SET another another")
+    |> check_database(%Database{
+      database_table: %{"another" => "another", "some" => "value"},
+      transactions: [%Transaction{log: %{"some" => nil, "another" => nil}}]
+    })
+    |> check_message("FALSE another")
+    |> check_result(:ok)
+    |> do_command("SET some value2")
+    |> check_database(%Database{
+      database_table: %{"another" => "another", "some" => "value2"},
+      transactions: [%Transaction{log: %{"some" => nil, "another" => nil}}]
+    })
+    |> check_message("TRUE value2")
+    |> check_result(:ok)
 
     database_with_multi_transactions = %Database{
       transactions: [%Transaction{}, %Transaction{level: 1}]
     }
 
-    set_on_multi_transaction =
-      Database.handle_command(
-        %Command{command: "SET", key: "some", value: "another_value"},
-        database_with_multi_transactions
-      )
-
-    assert set_on_multi_transaction == %DatabaseCommandResponse{
-             result: :ok,
-             message: "FALSE another_value",
-             database: %Database{
-               database_table: %{"some" => "another_value"},
-               transactions: [
-                 %Transaction{},
-                 %Transaction{level: 1, log: %{"some" => nil}}
-               ]
-             }
-           }
+    database_with_multi_transactions
+    |> do_command("SET some another_value")
+    |> check_result(:ok)
+    |> check_message("FALSE another_value")
+    |> check_database(%Database{
+      database_table: %{"some" => "another_value"},
+      transactions: [
+        %Transaction{},
+        %Transaction{level: 1, log: %{"some" => nil}}
+      ]
+    })
+    |> do_command("SET some another_another_value")
+    |> check_result(:ok)
+    |> check_message("TRUE another_another_value")
+    |> check_database(%Database{
+      database_table: %{"some" => "another_another_value"},
+      transactions: [
+        %Transaction{},
+        %Transaction{level: 1, log: %{"some" => nil}}
+      ]
+    })
+    |> do_command("SET another another")
+    |> check_result(:ok)
+    |> check_message("FALSE another")
+    |> check_database(%Database{
+      database_table: %{"some" => "another_another_value", "another" => "another"},
+      transactions: [
+        %Transaction{},
+        %Transaction{level: 1, log: %{"some" => nil, "another" => nil}}
+      ]
+    })
   end
 
   test "Get command" do
