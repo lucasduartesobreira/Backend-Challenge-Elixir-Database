@@ -74,7 +74,7 @@ defmodule Database do
 
     updated_transaction = %Transaction{
       trasaction
-      | log: Map.put(log, key, transaction_rollback_value)
+      | log: Map.put_new(log, key, transaction_rollback_value)
     }
 
     updated_database = %Database{
