@@ -95,16 +95,15 @@ defmodule DatabaseTest do
   test "Get command" do
     database = Database.new()
 
-    %DatabaseCommandResponse{database: database} =
-      Database.handle_command(%Command{command: "SET", key: "some", value: "value"}, database)
-
-    assert database == %Database{
-             database_table: %{"some" => "value"},
-             transactions: [%Transaction{log: %{"some" => nil}}]
-           }
-
-    assert Database.handle_command(%Command{command: "GET", key: "some"}, database) ==
-             %DatabaseCommandResponse{result: :ok, message: "value", database: database}
+    database
+    |> do_command("SET some value")
+    |> do_command("GET some")
+    |> check_database(%Database{
+      database_table: %{"some" => "value"},
+      transactions: [%Transaction{log: %{"some" => nil}}]
+    })
+    |> check_message("value")
+    |> check_result(:ok)
 
     database_with_multi_transactions = %Database{
       database_table: %{"some" => "value", "another" => "another"},
@@ -114,29 +113,15 @@ defmodule DatabaseTest do
       ]
     }
 
-    get_on_multi_transactions =
-      Database.handle_command(
-        %Command{command: "GET", key: "some"},
-        database_with_multi_transactions
-      )
-
-    assert get_on_multi_transactions == %DatabaseCommandResponse{
-             result: :ok,
-             database: database_with_multi_transactions,
-             message: "value"
-           }
-
-    get_on_multi_transactions =
-      Database.handle_command(
-        %Command{command: "GET", key: "another"},
-        database_with_multi_transactions
-      )
-
-    assert get_on_multi_transactions == %DatabaseCommandResponse{
-             result: :ok,
-             database: database_with_multi_transactions,
-             message: "another"
-           }
+    database_with_multi_transactions
+    |> do_command("GET some")
+    |> check_result(:ok)
+    |> check_database(database_with_multi_transactions)
+    |> check_message("value")
+    |> do_command("GET another")
+    |> check_result(:ok)
+    |> check_database(database_with_multi_transactions)
+    |> check_message("another")
   end
 
   test "Begin command" do
