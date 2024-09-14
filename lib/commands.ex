@@ -44,8 +44,10 @@ defmodule Commands do
     end
   end
 
+  @invalid_set_syntax "invalid syntax, should use SET <key> <value>"
+
   defp parse_set_args([]) do
-    {:err, "invalid syntax, should use SET <key> <value>"}
+    {:err, @invalid_set_syntax}
   end
 
   defp parse_set_args([args]) do
@@ -62,7 +64,7 @@ defmodule Commands do
         end
 
       {:ok, _, _} ->
-        {:err, "invalid syntax, should use SET <key> <value>"}
+        {:err, @invalid_set_syntax}
 
       err ->
         err
@@ -81,10 +83,11 @@ defmodule Commands do
          "only strings are accepted as key, found a key of type #{type}, you could try \"#{token}\""}
 
       _ ->
-        {:err, "couldn't parse a key"}
+        {:err, @invalid_set_syntax}
     end
   end
 
+  @using_nil_as_value ~s/NIL is not accepted as value for the SET command, you could try "NIL"/
   def parse_value(args) do
     value = ParseArgs.next_token(args)
 
@@ -96,13 +99,10 @@ defmodule Commands do
         {:ok, value_token == "TRUE"}
 
       {:ok, _, "", "NIL"} ->
-        {:err, "can't use NIL as value"}
-
-      {:ok, _, tail, _} ->
-        {:err, "couldn't process #{tail}"}
+        {:err, @using_nil_as_value}
 
       _ ->
-        {:err, "couldn't parse a value"}
+        {:err, @invalid_set_syntax}
     end
   end
 end
