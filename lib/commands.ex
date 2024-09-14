@@ -130,7 +130,6 @@ defmodule ParseArgs do
     {head, tail} = String.split_at(str, 1)
     transition_for_state = @transitions[state]
     type_transitions_for_state = @change_type_transitions[state]
-    # IO.puts("head: #{head}, state: #{state}, token: #{token}, type: #{type}")
 
     case {state == :end, String.length(head) > 0} do
       {false, true} ->

@@ -2,19 +2,12 @@ defmodule Transaction do
   defstruct level: 0, log: %{}
 end
 
-# defmodule Database do
-# end
-
 defmodule Database do
   defstruct [:database_file, database_table: %{}, transactions: [%Transaction{}]]
 
   defmodule DatabaseCommandResponse do
     @enforce_keys [:result, :message, :database]
     defstruct [:result, :message, :database]
-  end
-
-  defmodule RollbackError do
-    defexception message: "Can't rollback on level 0"
   end
 
   def handle_command(
