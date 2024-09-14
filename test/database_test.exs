@@ -154,65 +154,64 @@ defmodule DatabaseTest do
   test "Rollback command" do
     database = Database.new()
 
-    %DatabaseCommandResponse{database: database} =
-      Database.handle_command(%Command{command: "SET", key: "some", value: "value"}, database)
-
-    assert database == %Database{
-             database_table: %{"some" => "value"},
-             transactions: [%Transaction{log: %{"some" => nil}}]
-           }
-
-    result_first_begin = Database.handle_command(%Command{command: "BEGIN"}, database)
-
-    assert result_first_begin ==
-             %DatabaseCommandResponse{
-               result: :ok,
-               message: "1",
-               database: %Database{
-                 database_table: %{"some" => "value"},
-                 transactions: database.transactions ++ [%Transaction{level: 1, log: %{}}]
-               }
-             }
-
-    result_second_begin =
-      Database.handle_command(%Command{command: "BEGIN"}, result_first_begin.database)
-
-    assert result_second_begin == %DatabaseCommandResponse{
-             result: :ok,
-             message: "2",
-             database: %Database{
-               database_table: %{"some" => "value"},
-               transactions:
-                 result_first_begin.database.transactions ++ [%Transaction{level: 2, log: %{}}]
-             }
-           }
-
-    result_first_rollback =
-      Database.handle_command(%Command{command: "ROLLBACK"}, result_second_begin.database)
-
-    assert result_first_rollback == %DatabaseCommandResponse{
-             result: :ok,
-             message: "1",
-             database: result_first_begin.database
-           }
-
-    result_second_rollback =
-      Database.handle_command(%Command{command: "ROLLBACK"}, result_first_rollback.database)
-
-    assert result_second_rollback == %DatabaseCommandResponse{
-             result: :ok,
-             message: "0",
-             database: database
-           }
-
-    result_third_rollback =
-      Database.handle_command(%Command{command: "ROLLBACK"}, result_second_rollback.database)
-
-    assert result_third_rollback == %DatabaseCommandResponse{
-             result: :err,
-             message: "You can't rollback a transaction without even starting one",
-             database: database
-           }
+    database
+    |> do_command("SET some value")
+    |> do_command("BEGIn")
+    |> check_database(%Database{
+      database_table: %{"some" => "value"},
+      transactions: [%Transaction{log: %{"some" => nil}}, %Transaction{level: 1, log: %{}}]
+    })
+    |> check_result(:ok)
+    |> check_message("1")
+    |> do_command("SET another another")
+    |> do_command("SET some value2")
+    |> do_command("BEGIN")
+    |> check_database(%Database{
+      database_table: %{"some" => "value2", "another" => "another"},
+      transactions: [
+        %Transaction{log: %{"some" => nil}},
+        %Transaction{level: 1, log: %{"another" => nil, "some" => "value"}},
+        %Transaction{level: 2}
+      ]
+    })
+    |> check_result(:ok)
+    |> check_message("2")
+    |> do_command("SET another TRUE")
+    |> do_command("SET some FALSE")
+    |> check_database(%Database{
+      database_table: %{"some" => "FALSE", "another" => "TRUE"},
+      transactions: [
+        %Transaction{log: %{"some" => nil}},
+        %Transaction{level: 1, log: %{"another" => nil, "some" => "value"}},
+        %Transaction{level: 2, log: %{"another" => "another", "some" => "value2"}}
+      ]
+    })
+    |> do_command("rollback")
+    |> check_result(:ok)
+    |> check_message("1")
+    |> check_database(%Database{
+      database_table: %{"some" => "value2", "another" => "another"},
+      transactions: [
+        %Transaction{log: %{"some" => nil}},
+        %Transaction{level: 1, log: %{"another" => nil, "some" => "value"}}
+      ]
+    })
+    |> do_command("rollback")
+    |> check_database(%Database{
+      database_table: %{"some" => "value", "another" => nil},
+      transactions: [
+        %Transaction{log: %{"some" => nil}}
+      ]
+    })
+    |> do_command("rollback")
+    |> check_result(:err)
+    |> check_message("You can't rollback a transaction without even starting one")
+    |> check_database(%Database{
+      database_table: %{"some" => "value", "another" => nil},
+      transactions: [
+        %Transaction{log: %{"some" => nil}}
+      ]
+    })
   end
 
   test "Commit command" do
