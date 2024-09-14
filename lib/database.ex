@@ -153,7 +153,7 @@ defmodule Database do
         %DatabaseCommandResponse{result: :ok, message: "0", database: database}
 
       {%Transaction{log: log1}, %Transaction{level: level, log: log0}} ->
-        new_commit_to_transaction_log = Map.merge(log0, log1)
+        new_commit_to_transaction_log = Map.merge(log1, log0)
 
         updated_transactions =
           List.replace_at(l, -1, %Transaction{level: level, log: new_commit_to_transaction_log})
