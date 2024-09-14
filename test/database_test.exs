@@ -217,71 +217,38 @@ defmodule DatabaseTest do
   test "Commit command" do
     database = Database.new()
 
-    %DatabaseCommandResponse{database: database} =
-      Database.handle_command(%Command{command: "SET", key: "some", value: "value"}, database)
-
-    assert database == %Database{
-             database_table: %{"some" => "value"},
-             transactions: [%Transaction{log: %{"some" => nil}}]
-           }
-
-    result_first_commit = Database.handle_command(%Command{command: "COMMIT"}, database)
-
-    assert result_first_commit == %DatabaseCommandResponse{
-             result: :ok,
-             message: "0",
-             database: database
-           }
-
-    %DatabaseCommandResponse{database: result_first_begin} =
-      Database.handle_command(%Command{command: "BEGIN"}, database)
-
-    %DatabaseCommandResponse{database: result_second_set} =
-      Database.handle_command(
-        %Command{command: "SET", key: "another", value: "value"},
-        result_first_begin
-      )
-
-    %DatabaseCommandResponse{database: result_second_begin} =
-      Database.handle_command(%Command{command: "BEGIN"}, result_second_set)
-
-    %DatabaseCommandResponse{database: result_third_set} =
-      Database.handle_command(
-        %Command{command: "SET", key: "third", value: "third"},
-        result_second_begin
-      )
-
-    result_second_commit =
-      Database.handle_command(%Command{command: "COMMIT"}, result_third_set)
-
-    assert result_second_commit == %DatabaseCommandResponse{
-             result: :ok,
-             message: "1",
-             database: %Database{
-               database_table: %{"some" => "value", "third" => "third", "another" => "value"},
-               transactions: [
-                 %Transaction{log: %{"some" => nil}},
-                 %Transaction{level: 1, log: %{"another" => nil, "third" => nil}}
-               ]
-             }
-           }
-
-    result_third_commit =
-      Database.handle_command(%Command{command: "COMMIT"}, result_second_commit.database)
-
-    assert result_third_commit == %DatabaseCommandResponse{
-             result: :ok,
-             message: "0",
-             database: %Database{
-               database
-               | database_table: %{"some" => "value", "third" => "third", "another" => "value"},
-                 transactions: [
-                   %Transaction{
-                     log: %{"some" => nil, "another" => nil, "third" => nil}
-                   }
-                 ]
-             }
-           }
+    database
+    |> do_command("SET some value")
+    |> do_command("commit")
+    |> check_database(%Database{
+      database_table: %{"some" => "value"},
+      transactions: [%Transaction{log: %{"some" => nil}}]
+    })
+    |> do_command("begin")
+    |> do_command("SET another value")
+    |> do_command("begin")
+    |> do_command("SET third third")
+    |> do_command("commit")
+    |> check_result(:ok)
+    |> check_message("1")
+    |> check_database(%Database{
+      database_table: %{"some" => "value", "another" => "value", "third" => "third"},
+      transactions: [
+        %Transaction{log: %{"some" => nil}},
+        %Transaction{level: 1, log: %{"another" => nil, "third" => nil}}
+      ]
+    })
+    |> do_command("SET some another")
+    |> do_command("SET another some")
+    |> do_command("commIt")
+    |> check_result(:ok)
+    |> check_message("0")
+    |> check_database(%Database{
+      database_table: %{"some" => "another", "another" => "some", "third" => "third"},
+      transactions: [
+        %Transaction{log: %{"some" => nil, "another" => nil, "third" => nil}}
+      ]
+    })
   end
 
   test "Start database" do
