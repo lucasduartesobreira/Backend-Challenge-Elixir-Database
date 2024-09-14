@@ -89,8 +89,14 @@ defmodule Commands do
     value = ParseArgs.next_token(args)
 
     case value do
-      {:ok, value_token, "", _} ->
+      {:ok, value_token, "", :string} ->
         {:ok, value_token}
+
+      {:ok, value_token, "", :boolean} ->
+        {:ok, value_token == "TRUE"}
+
+      {:ok, _, "", "NIL"} ->
+        {:err, "can't use NIL as value"}
 
       {:ok, _, tail, _} ->
         {:err, "couldn't process #{tail}"}
@@ -151,17 +157,26 @@ defmodule ParseArgs do
         end
 
       {_, _} ->
-        {:ok, String.trim(token), String.trim(str),
-         if is_boolean_type(token) do
-           :boolean
-         else
-           type
-         end}
+        cond do
+          is_boolean_type(token) ->
+            {:ok, String.trim(token), String.trim(str), :boolean}
+
+          is_nil_type(token) ->
+            {:ok, String.trim(token), String.trim(str), "NIL"}
+
+          true ->
+            {:ok, String.trim(token), String.trim(str), type}
+        end
     end
   end
 
   def is_boolean_type(token) do
     token = String.trim(token)
     token == "TRUE" || token == "FALSE"
+  end
+
+  def is_nil_type(token) do
+    token = String.trim(token)
+    token == "NIL"
   end
 end

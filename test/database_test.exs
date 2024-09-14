@@ -179,7 +179,7 @@ defmodule DatabaseTest do
     |> do_command("SET another TRUE")
     |> do_command("SET some FALSE")
     |> check_database(%Database{
-      database_table: %{"some" => "FALSE", "another" => "TRUE"},
+      database_table: %{"some" => false, "another" => true},
       transactions: [
         %Transaction{log: %{"some" => nil}},
         %Transaction{level: 1, log: %{"another" => nil, "some" => "value"}},
