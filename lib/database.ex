@@ -10,10 +10,10 @@ defmodule Database do
     defstruct [:result, :message, :database]
   end
 
-  def handle_command(
-        %Command{} = command,
-        %Database{} = database
-      ) do
+  defp handle_command_internal(
+         %Command{} = command,
+         %Database{} = database
+       ) do
     case command do
       %Command{command: "SET", key: key, value: value} when key != nil and value != nil ->
         handle_set(key, value, database)
@@ -48,7 +48,7 @@ defmodule Database do
     parsed_command = Commands.parse(command)
 
     case parsed_command do
-      {:ok, command} -> handle_command(command, database)
+      {:ok, command} -> handle_command_internal(command, database)
       {:err, err} -> %DatabaseCommandResponse{result: :err, message: err, database: database}
     end
   end
