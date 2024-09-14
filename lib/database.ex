@@ -90,7 +90,7 @@ defmodule Database do
     message =
       case Map.get(database_table, key) do
         nil ->
-          "nil"
+          "NIL"
 
         result ->
           result
