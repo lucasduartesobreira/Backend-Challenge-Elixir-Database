@@ -25,13 +25,30 @@ defmodule DatabaseTest do
     response
   end
 
-  defp check_database(%DatabaseCommandResponse{database: database} = response, expected_database) do
-    assert database == expected_database
+  defp check_database(
+         %DatabaseCommandResponse{
+           database: %Database{database_table: db_table, transactions: transactions}
+         } = response,
+         %Database{database_table: expected_db_table, transactions: expected_transactions} =
+           expected_database
+       ) do
+    assert db_table == expected_db_table
+    assert transactions == expected_transactions
     response
   end
 
-  test "Set command" do
-    database = Database.new()
+  setup %{} do
+    [
+      db: Database.new(false, "/tmp/data_test")
+    ]
+  end
+
+  setup_all %{} do
+    on_exit(:clean_data, fn -> File.rm!("/tmp/data_test/data.ls") end)
+  end
+
+  test "Set command", ctx do
+    database = ctx[:db]
 
     do_command(database, "SET some value")
     |> check_database(%Database{
@@ -92,8 +109,8 @@ defmodule DatabaseTest do
     })
   end
 
-  test "Get command" do
-    database = Database.new()
+  test "Get command", ctx do
+    database = ctx[:db]
 
     database
     |> do_command("SET some value")
@@ -124,8 +141,8 @@ defmodule DatabaseTest do
     |> check_message("another")
   end
 
-  test "Begin command" do
-    database = Database.new()
+  test "Begin command", ctx do
+    database = ctx[:db]
 
     database
     |> do_command("SET some value")
@@ -151,8 +168,8 @@ defmodule DatabaseTest do
     |> check_message("2")
   end
 
-  test "Rollback command" do
-    database = Database.new()
+  test "Rollback command", ctx do
+    database = ctx[:db]
 
     database
     |> do_command("SET some value")
@@ -214,8 +231,8 @@ defmodule DatabaseTest do
     })
   end
 
-  test "Commit command" do
-    database = Database.new()
+  test "Commit command", ctx do
+    database = ctx[:db]
 
     database
     |> do_command("SET some value")

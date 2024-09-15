@@ -9,7 +9,7 @@ defmodule DesafioCli do
   comando como lista de strings e executa a CLI.
   """
   def main(_args) do
-    database = Database.new()
+    database = Database.new(true, "data")
     main_loop(database)
   end
 

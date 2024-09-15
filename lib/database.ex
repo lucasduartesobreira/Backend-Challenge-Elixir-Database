@@ -3,7 +3,11 @@ defmodule Transaction do
 end
 
 defmodule Database do
-  defstruct [:database_file, database_table: %{}, transactions: [%Transaction{}]]
+  @saved_data_file_name "data.ls"
+
+  defstruct database_file: Path.relative_to_cwd(~c"data"),
+            database_table: %{},
+            transactions: [%Transaction{}]
 
   defmodule DatabaseCommandResponse do
     @enforce_keys [:result, :message, :database]
@@ -56,10 +60,15 @@ defmodule Database do
   defp handle_set(
          key,
          value,
-         %Database{database_table: db_table, transactions: transactions} = database
+         %Database{database_file: db_path, database_table: db_table, transactions: transactions} =
+           database
        ) do
-    {%Transaction{log: log} = trasaction, remaining_transactions} =
+    {%Transaction{level: level, log: log} = trasaction, remaining_transactions} =
       List.pop_at(transactions, -1, %Transaction{})
+
+    if level == 0 do
+      save_map_in_file(%{key => value}, db_path, @saved_data_file_name)
+    end
 
     message = if(Map.has_key?(db_table, key), do: "TRUE", else: "FALSE") <> " #{value}"
 
@@ -146,6 +155,15 @@ defmodule Database do
         %DatabaseCommandResponse{result: :ok, message: "0", database: database}
 
       {%Transaction{log: log1}, %Transaction{level: level, log: log0}} ->
+        if level == 0 do
+          %Database{database_table: db_table, database_file: db_path} = database
+
+          updated_keys =
+            Map.keys(log1) |> Enum.map(fn key -> {key, Map.get(db_table, key)} end) |> Map.new()
+
+          save_map_in_file(updated_keys, db_path, @saved_data_file_name)
+        end
+
         new_commit_to_transaction_log = Map.merge(log1, log0)
 
         updated_transactions =
@@ -159,7 +177,79 @@ defmodule Database do
     end
   end
 
-  def new() do
-    %Database{}
+  defp load_from_file(db_path, file_name) do
+    find_or_make_dir =
+      case File.dir?(db_path) do
+        true -> :found
+        false -> :notfound
+      end
+
+    case find_or_make_dir do
+      :found -> get_key_value_map_from_file(db_path, file_name)
+      _ -> %{}
+    end
+  end
+
+  defp get_key_value_map_from_file(db_path, file_name) do
+    case File.open(Path.join(db_path, file_name), [:read], fn file ->
+           file |> IO.stream(:line) |> Enum.reduce(%{}, &parse_key_and_value(&1, &2))
+         end) do
+      {:error, _} ->
+        %{}
+
+      {:ok, map} ->
+        map
+    end
+  end
+
+  defp parse_key_and_value(line, map) do
+    captured = Regex.named_captures(~r/"(?<key>.*)"[ ]*=>[ ]*(?<value>.*)[ ]*/, line)
+
+    case captured do
+      nil -> map
+      %{"key" => key, "value" => value} -> Map.put(map, key, value)
+    end
+  end
+
+  defp load(db_path) do
+    load_from_file(db_path, @saved_data_file_name)
+  end
+
+  defp ensure_file_exists(path) do
+    if not File.exists?(path) do
+      File.mkdir_p!(Path.dirname(path))
+      File.touch!(path)
+    end
+  end
+
+  defp save_map_in_file(map, db_path, file_name \\ @saved_data_file_name) do
+    map_encoded =
+      map
+      |> Map.to_list()
+      |> Enum.reduce("", fn {key, value}, acc -> acc <> ~s/"#{key}" => #{value}\n/ end)
+
+    path = Path.join(db_path, file_name)
+
+    ensure_file_exists(path)
+
+    result_from_try_to_save =
+      File.open(path, [:append], fn file ->
+        file |> IO.write(map_encoded)
+      end)
+
+    case result_from_try_to_save do
+      {:error, reason} -> exit(reason)
+      {:ok, _} -> :ok
+    end
+  end
+
+  def new(load \\ false, db_path \\ "data") do
+    if load do
+      db_path = Path.relative_to_cwd(db_path)
+      table_loaded = load(db_path)
+      %Database{database_file: db_path, database_table: table_loaded}
+    else
+      %Database{database_file: db_path}
+    end
   end
 end
